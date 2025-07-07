@@ -9,12 +9,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type SessionRepository interface {
-	CreateSession(session entities.Session) error
-	FindSessionByJTI(jti string) (*entities.Session, error)
-	MarkSessionAsUsed(id string) error
-}
-
 type SessionRepo struct {
 	db *pgxpool.Pool
 }
@@ -23,7 +17,7 @@ func NewSessionRepository(db *pgxpool.Pool) *SessionRepo {
 	return &SessionRepo{db: db}
 }
 
-func (r *SessionRepo) CreateSession(session entities.Session) error {
+func (r *SessionRepo) CreateSession(session *entities.Session) error {
 	query := `INSERT INTO sessions (id, user_guid, refresh_hash, jti, ip_address, expires_at, used)
               VALUES ($1, $2, $3, $4, $5, $6, $7)`
 	_, err := r.db.Exec(context.Background(), query,

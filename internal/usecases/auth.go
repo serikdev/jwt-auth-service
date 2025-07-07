@@ -9,15 +9,19 @@ import (
 
 	"jwt-service/internal/entities"
 
-	"jwt-service/internal/adapter/repositories"
-
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
+type SessionRepo interface {
+	CreateSession(session *entities.Session) error
+	FindSessionByJTI(jti string) (*entities.Session, error)
+	MarkSessionAsUsed(id string) error
+}
+
 type AuthUseCase struct {
-	repo        repositories.SessionRepository
+	repo        SessionRepo
 	jwtSecret   string
 	refreshTTL  time.Duration
 	emailSender EmailSender
@@ -27,7 +31,7 @@ type EmailSender interface {
 	SendWarning(userGUID, newIP string) error
 }
 
-func NewAuthUseCase(repo repositories.SessionRepository, jwtSecret string, refreshTTL time.Duration, emailSender EmailSender) *AuthUseCase {
+func NewAuthUseCase(repo SessionRepo, jwtSecret string, refreshTTL time.Duration, emailSender EmailSender) *AuthUseCase {
 	return &AuthUseCase{
 		repo:        repo,
 		jwtSecret:   jwtSecret,
@@ -57,7 +61,7 @@ func (uc *AuthUseCase) GenerateTokens(userGUID, ip string) (*entities.TokenPair,
 		return nil, fmt.Errorf("failed to hash refresh token: %w", err)
 	}
 
-	session := entities.Session{
+	session := &entities.Session{
 		ID:          generateUUID(),
 		UserGUID:    userGUID,
 		RefreshHash: string(refreshHash),
@@ -120,7 +124,7 @@ func (uc *AuthUseCase) RefreshTokens(oldAccessToken, refreshToken, clientIP stri
 		return nil, fmt.Errorf("failed to hash new refresh token: %w", err)
 	}
 
-	newSession := entities.Session{
+	newSession := &entities.Session{
 		ID:          generateUUID(),
 		UserGUID:    session.UserGUID,
 		RefreshHash: string(newRefreshHash),
